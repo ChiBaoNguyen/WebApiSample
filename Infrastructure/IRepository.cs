@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore.Storage;
 
 namespace WebAPISample.Infrastructure
 {
@@ -10,5 +10,6 @@ namespace WebAPISample.Infrastructure
         void Update(T entity);
         void Delete(T entity);
         Task SaveChangeAsync();
+        IDbContextTransaction BeginTransaction();
     }
 }

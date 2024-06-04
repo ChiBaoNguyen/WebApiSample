@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace WebAPISample.Infrastructure
 {
@@ -9,11 +10,16 @@ namespace WebAPISample.Infrastructure
 
         public Repository(DbContext context)
         {
-            this.appDbContext = context;
+            appDbContext = context;
             entities = appDbContext.Set<T>();
         }
 
         public Task SaveChangeAsync() => appDbContext.SaveChangesAsync();
+
+        public IDbContextTransaction BeginTransaction()
+        {
+            return appDbContext.Database.BeginTransaction();
+        }
 
         public async Task<IReadOnlyList<T>> GetAllAsync()
         {
@@ -27,6 +33,7 @@ namespace WebAPISample.Infrastructure
             {
                 return null!;
             }
+
             return entity;
         }
 

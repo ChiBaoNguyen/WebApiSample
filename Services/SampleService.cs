@@ -11,6 +11,7 @@ namespace WebAPISample.Service
         private ISampleRepository sampleRepository;
         private IMapper mapper;
         private readonly ILogger<SampleService> logger;
+
         public SampleService(ISampleRepository sampleRepository, IMapper mapper, ILogger<SampleService> logger)
         {
             this.sampleRepository = sampleRepository;
@@ -25,6 +26,7 @@ namespace WebAPISample.Service
             {
                 logger.LogInformation($" No Sample items found");
             }
+
             return res;
         }
 
@@ -35,74 +37,101 @@ namespace WebAPISample.Service
             {
                 logger.LogInformation($"No Sample item with Id {id} found.");
             }
+
             return res;
         }
 
         public async Task CreateSampleAsync(CreateSampleRequest request)
         {
-            try
+            await using (var transaction = sampleRepository.BeginTransaction())
             {
-                // DATA
-                var dataAdd = mapper.Map<Sample>(request);
-                dataAdd.CreatedAt = DateTime.Now;
+                try
+                {
+                    // DATA
+                    var dataAdd = mapper.Map<Sample>(request);
+                    dataAdd.CreatedAt = DateTime.Now;
 
-                // CREATE & SAVE
-                await sampleRepository.CreateAsync(dataAdd);
-                await sampleRepository.SaveChangeAsync();
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "An error occurred while creating the todo item.");
+                    // CREATE & SAVE
+                    await sampleRepository.CreateAsync(dataAdd);
+                    await sampleRepository.SaveChangeAsync();
+
+                    // COMMIT
+                    await transaction.CommitAsync();
+                }
+                catch (Exception ex)
+                {
+                    // ROLLBACK
+                    await transaction.RollbackAsync();
+
+                    logger.LogError(ex, "An error occurred while creating the todo item.");
+                }
             }
         }
 
         public async Task UpdateSample(int id, UpdateSampleRequest request)
         {
-            try
+            await using (var transaction = sampleRepository.BeginTransaction())
             {
-                // FINDED
-                var dataTable = await sampleRepository.GetByIDAsync(id);
-                if (dataTable != null)
+                try
                 {
-                    var dataUpdate = mapper.Map(request, dataTable);
-                    dataUpdate.UpdatedAt = DateTime.Now;
+                    // FINDED
+                    var dataTable = await sampleRepository.GetByIDAsync(id);
+                    if (dataTable != null)
+                    {
+                        var dataUpdate = mapper.Map(request, dataTable);
+                        dataUpdate.UpdatedAt = DateTime.Now;
 
-                    // UPDATE & SAVE
-                    sampleRepository.Update(dataUpdate);
-                    await sampleRepository.SaveChangeAsync();
+                        // UPDATE & SAVE
+                        sampleRepository.Update(dataUpdate);
+                        await sampleRepository.SaveChangeAsync();
+
+                        // COMMIT
+                        await transaction.CommitAsync();
+                    }
+                    else
+                    {
+                        logger.LogInformation(" No Sample items found");
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    logger.LogInformation($" No Sample items found");
+                    // ROLLBACK
+                    await transaction.RollbackAsync();
+
+                    logger.LogError(ex, "An error occurred while updating the todo item.");
                 }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "An error occurred while updating the todo item.");
             }
         }
 
         public async Task DeleteSampleAsync(int id)
         {
-            try
+            await using (var transaction = sampleRepository.BeginTransaction())
             {
-                // FINDED
-                var data = await sampleRepository.GetByIDAsync(id);
-                if (data != null)
+                try
                 {
-                    // DELETE & SAVE
-                    sampleRepository.Delete(data);
-                    await sampleRepository.SaveChangeAsync();
-                }
-                else
-                {
-                    logger.LogInformation($"No item found with the id {id}");
-                }
-            }
-            catch (Exception ex)
-            {
+                    // FINDED
+                    var data = await sampleRepository.GetByIDAsync(id);
+                    if (data != null)
+                    {
+                        // DELETE & SAVE
+                        sampleRepository.Delete(data);
+                        await sampleRepository.SaveChangeAsync();
 
-                logger.LogError(ex, "An error occurred while remove the todo item.");
+                        // COMMIT
+                        await transaction.CommitAsync();
+                    }
+                    else
+                    {
+                        logger.LogInformation($"No item found with the id {id}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // ROLLBACK
+                    await transaction.RollbackAsync();
+
+                    logger.LogError(ex, "An error occurred while remove the todo item.");
+                }
             }
         }
     }
